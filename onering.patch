@@ -1,0 +1,60 @@
+From 0fd0ec413abdda45d5e24378bbd96cefb11b1cfc Mon Sep 17 00:00:00 2001
+From: jhopan <jhosuaarmandoputrapanjaitan@gmail.com>
+Date: Wed, 24 Jun 2026 09:20:10 +0800
+Subject: [PATCH] Add OneRing SNI override support
+
+- Add ParseOneRing() helper to parse onering:real:bug format
+- Modify parseServerName() to override SNI with real domain
+- Bug domain used for TCP connection, real domain for TLS SNI
+- Compatible with all existing Xray features
+- WebSocket Host automatically follows overridden ServerName
+---
+ transport/internet/tls/config.go | 28 ++++++++++++++++++++++++++++
+ 1 file changed, 28 insertions(+)
+
+diff --git a/transport/internet/tls/config.go b/transport/internet/tls/config.go
+index 9c860469..c19259f5 100644
+--- a/transport/internet/tls/config.go
++++ b/transport/internet/tls/config.go
+@@ -273,10 +273,38 @@ func getNewGetCertificateFunc(certs []*tls.Certificate, rejectUnknownSNI bool) f
+ 	}
+ }
+ 
++// ParseOneRing parses OneRing format: onering:real:bug
++// Returns real domain and bug domain, or empty strings if not OneRing format
++func ParseOneRing(serverName string) (real, bug string) {
++	const prefix = "onering:"
++	
++	// Case-insensitive prefix check
++	if !strings.HasPrefix(strings.ToLower(serverName), prefix) {
++		return "", ""
++	}
++	
++	// Split by colon: onering:real:bug
++	parts := strings.SplitN(serverName, ":", 3)
++	if len(parts) != 3 || parts[1] == "" || parts[2] == "" {
++		return "", ""
++	}
++	
++	return strings.TrimSpace(parts[1]), strings.TrimSpace(parts[2])
++}
++
+ func (c *Config) parseServerName() string {
+ 	if IsFromMitm(c.ServerName) {
+ 		return ""
+ 	}
++	
++	// OneRing support: parse format onering:real:bug and use real domain for SNI
++	if oneRingReal, oneRingBug := ParseOneRing(c.ServerName); oneRingReal != "" {
++		errors.LogDebug(context.Background(), 
++			"OneRing enabled: using real domain ", oneRingReal, 
++			" for SNI (bug domain: ", oneRingBug, ")")
++		return oneRingReal
++	}
++	
+ 	return c.ServerName
+ }
+ 
+-- 
+2.52.0.windows.1
+
