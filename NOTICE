@@ -1,0 +1,18 @@
+OneRing for Xray-core
+=====================
+
+This project is a modification (patch) built on top of Xray-core.
+
+Xray-core
+  Copyright (c) 2020-present XTLS contributors
+  Licensed under the Mozilla Public License 2.0 (MPL-2.0)
+  Source: https://github.com/XTLS/Xray-core
+  Base version used: v26.6.22
+
+OneRing patch
+  Adds SNI override support via the "onering:real:bug" serverName format.
+  Distributed under the same license as Xray-core (MPL-2.0).
+
+Nothing in this repository reproduces the full Xray-core source tree.
+It contains only the OneRing patch and build scripts, which fetch the
+official Xray-core release at build time.

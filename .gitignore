@@ -1,1 +1,11 @@
-*.onering*
+# build workspace (fetched at apply time)
+Xray-core/
+dist/
+*.onering
+*.onering.exe
+xray.*.onering*
+*.test
+*.exe
+!build.sh
+!apply.sh
+!verify.sh

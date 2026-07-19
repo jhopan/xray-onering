@@ -1,156 +1,144 @@
 # OneRing for Xray-core
 
-OneRing adalah patch untuk **Xray-core** yang menambahkan kemampuan **SNI override** dengan format `onering:real:bug`.
+Repo resmi: https://github.com/jhopan/jhopanstore-onering
 
-Dengan OneRing, kamu bisa memakai satu **bug domain** (host gratis / lolos DPI) untuk koneksi TCP, sementara **TLS SNI** yang dikirim adalah **real domain** milikmu — tanpa perlu edit banyak field di config.
+Patch **Xray-core** supaya `serverName` bisa:
 
-- **Base**: Xray-core `v26.6.22`
-- **Versi OneRing**: `onering-v1.0`
-- **Perubahan**: 1 file, +28 baris (`transport/internet/tls/config.go`)
+```
+onering:REAL_DOMAIN:BUG_DOMAIN
+```
 
-> Ini repo pengembangan mandiri. Isinya **hanya kode OneRing kita sendiri** (patch + script), bukan salinan penuh Xray-core. Xray-core asli tetap milik XTLS (lihat bagian Lisensi).
+- TCP dial → bug domain (atau address config)
+- TLS SNI → real domain
+- 1 file, +28 baris
+- **Bukan app. Bukan AAR.** Binary/core saja — dipakai di mana saja.
+
+| Field | Value |
+|---|---|
+| OneRing | `onering-v1.0` |
+| Base | Xray-core `v26.6.22` |
+| File | `transport/internet/tls/config.go` |
+| License | MPL-2.0 (lihat `NOTICE`) |
 
 ---
 
-## Apa yang diubah
+## Struktur
 
-Semua perubahan ada di `transport/internet/tls/config.go`:
-
-### 1. Fungsi baru `ParseOneRing()`
-
-Mem-parse format `onering:real:bug`:
-
-```go
-// ParseOneRing parses OneRing format: onering:real:bug
-// Returns real domain and bug domain, or empty strings if not OneRing format
-func ParseOneRing(serverName string) (real, bug string) {
-	const prefix = "onering:"
-
-	// Case-insensitive prefix check
-	if !strings.HasPrefix(strings.ToLower(serverName), prefix) {
-		return "", ""
-	}
-
-	// Split by colon: onering:real:bug
-	parts := strings.SplitN(serverName, ":", 3)
-	if len(parts) != 3 || parts[1] == "" || parts[2] == "" {
-		return "", ""
-	}
-
-	return strings.TrimSpace(parts[1]), strings.TrimSpace(parts[2])
-}
+```
+jhopanstore-onering/
+├── onering.patch       # patch (git format-patch)
+├── config.go           # drop-in full file (opsional)
+├── apply.sh            # clone base + apply patch
+├── build.sh            # build binary multi-platform
+├── verify.sh           # cek patch / binary
+├── VERSION
+├── CHANGES.md
+├── NOTICE
+└── README.md
 ```
 
-- Cek prefix `onering:` (case-insensitive)
-- Split jadi 3 bagian: `onering` : `real` : `bug`
-- Kalau format salah / ada bagian kosong → return kosong (fallback ke perilaku Xray normal, aman)
+Setelah `apply.sh`:
 
-### 2. Modifikasi `parseServerName()`
-
-```go
-func (c *Config) parseServerName() string {
-	if IsFromMitm(c.ServerName) {
-		return ""
-	}
-
-	// OneRing support: parse format onering:real:bug and use real domain for SNI
-	if oneRingReal, oneRingBug := ParseOneRing(c.ServerName); oneRingReal != "" {
-		errors.LogDebug(context.Background(),
-			"OneRing enabled: using real domain ", oneRingReal,
-			" for SNI (bug domain: ", oneRingBug, ")")
-		return oneRingReal
-	}
-
-	return c.ServerName
-}
+```
+Xray-core/              # full tree (gitignored)
+dist/                   # binary output
 ```
 
-- Kalau `serverName` = format OneRing → **TLS SNI pakai real domain**
-- **Bug domain** tetap dipakai untuk koneksi TCP (dari `address` / `wsSettings.host`)
-- WebSocket `Host` otomatis ikut real domain
-- Kalau bukan format OneRing → jalan normal seperti Xray biasa
-
-**Kompatibel penuh** dengan semua fitur Xray lain (WS, TLS, gRPC, routing, balancer, dst).
+Repo ini **tidak** bawa full history Xray. Hanya patch + script + docs.
 
 ---
 
-## Cara pakai di config
+## Syarat
 
-Cukup ganti `serverName` di `tlsSettings`:
-
-```json
-{
-  "streamSettings": {
-    "network": "ws",
-    "security": "tls",
-    "tlsSettings": {
-      "serverName": "onering:real.domainku.com:bug.gratisan.com"
-    },
-    "wsSettings": {
-      "path": "/vless",
-      "host": "bug.gratisan.com"
-    }
-  }
-}
-```
-
-- **TCP connect** → `bug.gratisan.com`
-- **TLS SNI** → `real.domainku.com`
-- **WS Host** → ikut real domain otomatis
+- Go 1.24+ (dev: Go 1.26 OK)
+- Git
+- Internet (clone base sekali)
 
 ---
 
-## Build
-
-Butuh Go 1.24+ dan koneksi internet (untuk clone Xray-core base).
+## Build core
 
 ```bash
-# 1. Terapkan patch OneRing ke Xray-core v26.6.22
+# 1) ambil Xray base + patch OneRing
 bash apply.sh
 
-# 2. Build binary OneRing
-bash build.sh
+# 2) build binary
+bash build.sh linux-arm64      # OpenWrt / STB / Pi
+bash build.sh linux-amd64      # VPS / server
+bash build.sh windows-amd64    # Windows
+bash build.sh host             # OS ini
+bash build.sh all
 ```
 
-Hasil build ada di folder `Xray-core/`:
-
-- `xray.linux.arm64.onering`  — router / STB (OpenWrt, Passwall)
-- `xray.linux.amd64.onering`  — Linux x86_64 / WSL
-- `xray.windows.amd64.onering.exe` — Windows
-
-Verifikasi:
+Output: `dist/xray.<os>.<arch>.onering[.exe]`
 
 ```bash
-./Xray-core/xray version
-# Xray 26.6.22 ... (base) + OneRing SNI override
+bash verify.sh
+./dist/xray.linux.amd64.onering version
+```
+
+### Custom / env
+
+```bash
+bash build.sh custom linux arm GOARM=7
+XRX_VER=v26.6.22 bash apply.sh
 ```
 
 ---
 
-## Struktur repo
+## Config
 
+```json
+"tlsSettings": {
+  "serverName": "onering:neva.jhopanstore.my.id:support.zoom.us",
+  "fingerprint": ""
+}
 ```
-onering-xray-core/
-├── README.md          # dokumentasi ini
-├── onering.patch      # patch OneRing (git format-patch, +28 baris)
-├── apply.sh           # clone Xray v26.6.22 + apply patch
-├── build.sh           # build binary multi-arch
-└── NOTICE             # atribusi lisensi Xray-core (MPL-2.0)
+
+| Layer | Value |
+|---|---|
+| TCP / address | bug domain |
+| TLS SNI | real domain |
+| WS Host | real domain (biasanya) |
+
+Xray v26+: jangan `allowInsecure`. Pakai `fingerprint: ""`.
+
+Detail perubahan: `CHANGES.md`. Diff: `onering.patch`.
+
+---
+
+## Deploy singkat
+
+**VPS**
+```bash
+scp dist/xray.linux.amd64.onering root@SERVER:/usr/local/bin/xray
+```
+
+**OpenWrt**
+```bash
+scp dist/xray.linux.arm64.onering root@ROUTER:/tmp/xray
+# backup + ganti /usr/bin/xray + passwall restart
+```
+
+**Windows**
+```text
+dist\xray.windows.amd64.onering.exe run -c config.json
+```
+
+Android AAR / app = packaging terpisah, bukan isi repo ini.
+
+---
+
+## Upgrade base Xray
+
+```bash
+XRX_VER=v26.x.y bash apply.sh
+# conflict → edit manual, regenerate onering.patch
+bash build.sh all
 ```
 
 ---
 
-## Roadmap
+## License
 
-- [x] `onering-v1.0` — SNI override (`onering:real:bug`)
-- [ ] Limit per-IP
-- [ ] Limit per-GB (kuota)
-- [ ] Traffic split khusus game
-
----
-
-## Lisensi
-
-Xray-core dilisensikan **MPL-2.0** oleh [XTLS](https://github.com/XTLS/Xray-core).
-Patch OneRing ini adalah modifikasi di atas Xray-core `v26.6.22` dan mengikuti lisensi yang sama.
-Lihat file `NOTICE`.
+Xray-core MPL-2.0 (XTLS). Patch OneRing ikut MPL-2.0. Lihat `NOTICE`.
