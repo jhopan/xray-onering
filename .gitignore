@@ -1,11 +1,8 @@
-# build workspace (fetched at apply time)
+# fetched / built (not part of kit)
 Xray-core/
 dist/
 *.onering
 *.onering.exe
 xray.*.onering*
 *.test
-*.exe
-!build.sh
-!apply.sh
-!verify.sh
+SHA256SUMS.txt

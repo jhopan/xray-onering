@@ -1,4 +1,0 @@
-onering-v1.0
-base=xray-core v26.6.22
-feature=SNI override onering:real:bug
-file=transport/internet/tls/config.go

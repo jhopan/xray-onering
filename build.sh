@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 # build.sh — build portable OneRing core binary
-# Usage:
-#   bash build.sh                         # host, tree harus sudah apply
-#   bash build.sh linux-arm64
-#   bash build.sh all
-#   bash build.sh --ver v26.6.22 all      # pilih versi → clone → apply → build
-#   bash build.sh -v 26.6.22 windows-amd64
-#   bash build.sh --force --ver v26.7.1 all
+# Developer: JhopanStore  |  https://github.com/jhopan/jhopanstore-onering
+#
+#   bash build.sh --ver v26.6.22 all
+#   bash build.sh -v 26.6.22 linux-arm64
+#   bash build.sh --force --ver v26.7.1 windows-amd64
+#   bash build.sh host
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
@@ -18,7 +17,6 @@ LDFLAGS="${LDFLAGS:--s -w}"
 MARKER="func ParseOneRing"
 XRX_VER=""
 FORCE_APPLY=0
-TARGET=""
 TARGETS=()
 
 usage() {
@@ -32,19 +30,17 @@ targets:
   custom <goos> <goarch> [extra env...]
 
 options:
-  --ver, -v VER   pilih versi Xray → clone/unduh + apply OneRing dulu
-  --force, -f     re-clone base (pakai dengan --ver)
+  --ver, -v VER   clone/unduh Xray VER + apply OneRing, lalu build
+  --force, -f     re-clone base (dengan --ver)
   --help, -h
 
 examples:
   bash build.sh --ver v26.6.22 linux-arm64
   bash build.sh -v 26.6.22 all
   bash build.sh --force --ver v26.7.1 windows-amd64
-  bash build.sh host
 EOF
 }
 
-# parse args: options then target
 while [ $# -gt 0 ]; do
   case "$1" in
     --ver|-v)
@@ -63,18 +59,12 @@ while [ $# -gt 0 ]; do
       usage >&2
       exit 2
       ;;
-    *)
-      TARGETS+=("$1")
-      shift
-      ;;
+    *) TARGETS+=("$1"); shift ;;
   esac
 done
 
-if [ ${#TARGETS[@]} -eq 0 ]; then
-  TARGETS=(host)
-fi
+[ ${#TARGETS[@]} -eq 0 ] && TARGETS=(host)
 
-# if version requested → apply first
 if [ -n "$XRX_VER" ]; then
   apply_args=("$XRX_VER")
   [ "$FORCE_APPLY" -eq 1 ] && apply_args=(--force "$XRX_VER")
@@ -83,12 +73,11 @@ if [ -n "$XRX_VER" ]; then
 fi
 
 if [ ! -d "$SRC" ]; then
-  echo "[-] $SRC missing. jalankan: bash apply.sh [version]" >&2
-  echo "    atau: bash build.sh --ver v26.6.22 all" >&2
+  echo "[-] $SRC missing. pakai: bash build.sh --ver v26.6.22 all" >&2
   exit 1
 fi
 if ! grep -q "$MARKER" "$SRC/transport/internet/tls/config.go" 2>/dev/null; then
-  echo "[-] OneRing patch belum di $SRC. jalankan: bash apply.sh" >&2
+  echo "[-] OneRing belum di tree. jalankan: bash apply.sh" >&2
   exit 1
 fi
 
@@ -105,7 +94,6 @@ build_one() {
   echo "[*] $out  ($goos/$goarch ${extra[*]:-})"
   (
     cd "$SRC"
-    # shellcheck disable=SC2086
     env CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" ${extra[@]+"${extra[@]}"} \
       go build -trimpath -ldflags="$LDFLAGS" -o "$ROOT/$DIST/$out" ./main
   )
@@ -147,15 +135,12 @@ do_target() {
   esac
 }
 
-# TARGETS may be: all | linux-arm64 | custom linux arm GOARM=7
 if [ "${TARGETS[0]}" = "custom" ]; then
   do_target "${TARGETS[@]}"
 else
-  for t in "${TARGETS[@]}"; do
-    do_target "$t"
-  done
+  for t in "${TARGETS[@]}"; do do_target "$t"; done
 fi
 
 echo "[+] done → $ROOT/$DIST/"
-[ -n "$base_pin" ] && echo "[+] base Xray $base_pin + OneRing"
+[ -n "$base_pin" ] && echo "[+] base Xray $base_pin + OneRing (JhopanStore)"
 ls -lh "$DIST" | sed -n '1,20p'
