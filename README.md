@@ -16,7 +16,7 @@ onering:REAL_DOMAIN:BUG_DOMAIN
 | Field | Value |
 |---|---|
 | OneRing | `onering-v1.0` |
-| Base | Xray-core `v26.6.22` |
+| Base default | Xray-core `v26.6.22` (bisa diganti) |
 | File | `transport/internet/tls/config.go` |
 | License | MPL-2.0 (lihat `NOTICE`) |
 
@@ -28,23 +28,21 @@ onering:REAL_DOMAIN:BUG_DOMAIN
 jhopanstore-onering/
 ├── onering.patch       # patch (git format-patch)
 ├── config.go           # drop-in full file (opsional)
-├── apply.sh            # clone base + apply patch
-├── build.sh            # build binary multi-platform
-├── verify.sh           # cek patch / binary
+├── apply.sh            # pilih versi → clone → apply
+├── build.sh            # --ver VER → apply + build
+├── verify.sh
 ├── VERSION
 ├── CHANGES.md
 ├── NOTICE
 └── README.md
 ```
 
-Setelah `apply.sh`:
+Setelah apply/build:
 
 ```
 Xray-core/              # full tree (gitignored)
 dist/                   # binary output
 ```
-
-Repo ini **tidak** bawa full history Xray. Hanya patch + script + docs.
 
 ---
 
@@ -52,36 +50,62 @@ Repo ini **tidak** bawa full history Xray. Hanya patch + script + docs.
 
 - Go 1.24+ (dev: Go 1.26 OK)
 - Git
-- Internet (clone base sekali)
+- Internet (clone base)
 
 ---
 
-## Build core
+## Cara pakai (pilih versi → unduh → apply → build)
+
+### Satu perintah (disarankan)
 
 ```bash
-# 1) ambil Xray base + patch OneRing
-bash apply.sh
-
-# 2) build binary
-bash build.sh linux-arm64      # OpenWrt / STB / Pi
-bash build.sh linux-amd64      # VPS / server
-bash build.sh windows-amd64    # Windows
-bash build.sh host             # OS ini
-bash build.sh all
+# pilih versi Xray → clone/unduh → apply OneRing → build
+bash build.sh --ver v26.6.22 linux-arm64
+bash build.sh -v 26.6.22 all
+bash build.sh --force --ver v26.7.1 windows-amd64
 ```
+
+### Dua langkah
+
+```bash
+bash apply.sh v26.6.22          # unduh tag + apply OneRing
+bash build.sh linux-arm64       # compile
+
+# list tag Xray terbaru
+bash apply.sh --list
+
+# paksa re-clone
+bash apply.sh --force v26.6.22
+```
+
+Default versi (kalau arg kosong): isi `VERSION` (`base=xray-core v...`) atau `v26.6.22`.
+
+Env alternatif:
+
+```bash
+XRX_VER=v26.6.22 bash apply.sh
+```
+
+---
+
+## Target build
+
+| Target | Hasil |
+|---|---|
+| `host` | OS sekarang |
+| `linux-arm64` | OpenWrt / STB / Pi |
+| `linux-amd64` | VPS / desktop Linux |
+| `linux-arm` | OpenWrt 32-bit (GOARM=7) |
+| `windows-amd64` | Desktop Windows |
+| `windows-arm64` | Windows ARM |
+| `all` | arm64+amd64 linux + win amd64 |
+| `custom goos goarch` | bebas |
 
 Output: `dist/xray.<os>.<arch>.onering[.exe]`
 
 ```bash
 bash verify.sh
 ./dist/xray.linux.amd64.onering version
-```
-
-### Custom / env
-
-```bash
-bash build.sh custom linux arm GOARM=7
-XRX_VER=v26.6.22 bash apply.sh
 ```
 
 ---
@@ -103,7 +127,7 @@ XRX_VER=v26.6.22 bash apply.sh
 
 Xray v26+: jangan `allowInsecure`. Pakai `fingerprint: ""`.
 
-Detail perubahan: `CHANGES.md`. Diff: `onering.patch`.
+Detail: `CHANGES.md`. Diff: `onering.patch`.
 
 ---
 
@@ -125,15 +149,23 @@ scp dist/xray.linux.arm64.onering root@ROUTER:/tmp/xray
 dist\xray.windows.amd64.onering.exe run -c config.json
 ```
 
-Android AAR / app = packaging terpisah, bukan isi repo ini.
+Android AAR = packaging terpisah (`libxray-mobile`), bukan isi repo ini.
 
 ---
 
-## Upgrade base Xray
+## Kalau patch gagal di versi baru
+
+Upstream ubah `parseServerName` → `git apply` error.
 
 ```bash
-XRX_VER=v26.x.y bash apply.sh
-# conflict → edit manual, regenerate onering.patch
+cd Xray-core
+git apply --reject ../onering.patch
+# edit manual ParseOneRing + parseServerName (lihat CHANGES.md)
+git add transport/internet/tls/config.go
+git commit -m "OneRing"
+git format-patch -1 HEAD --stdout > ../onering.patch
+# update VERSION base=...
+cd ..
 bash build.sh all
 ```
 
