@@ -49,7 +49,8 @@ else
 fi
 
 if command -v go >/dev/null; then
-  PARSE_GO="${TMPDIR:-/tmp}/onering_parse_check.go"
+  PARSE_GO="$(go env GOPATH)/onering_parse_check.go"
+  mkdir -p "$(dirname "$PARSE_GO")"
   cat > "$PARSE_GO" <<'GO'
 package main
 import ("fmt"; "os"; "strings")

@@ -26,7 +26,7 @@ Build **Xray-core** dengan patch SNI OneRing — `onering:REAL:BUG`.
 |---|---|---|
 | `xray.linux.arm64.onering` | Linux ARM64 | OpenWrt / STB / Pi / VPS ARM |
 | `xray.linux.amd64.onering` | Linux x64 | VPS / server / desktop Linux |
-| `xray.linux.armv7.onering` | Linux ARMv7 | OpenWrt 32-bit / router lama |
+| `xray.linux.armv7.onering` | Linux ARMv7 | OpenWrt 32-bit (armv7) / router lama |
 | `xray.windows.amd64.onering.exe` | Windows x64 | Desktop / laptop Windows |
 | `xray.windows.arm64.onering.exe` | Windows ARM64 | Surface Pro X / Snapdragon PC |
 | `SHA256SUMS.txt` | — | verifikasi integritas |
