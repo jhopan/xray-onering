@@ -1,167 +1,308 @@
-# OneRing Core (JhopanStore)
+# xray-onering (JhopanStore)
 
-Build **Xray-core** dengan patch SNI OneRing: `onering:REAL:BUG`.
+Build **Xray-core** dengan patch SNI OneRing — `onering:REAL:BUG`.
 
-- TCP / address → bug domain  
-- TLS SNI → real domain  
-- Kit: patch + script saja. Bukan app, bukan AAR.
+- TCP / address → bug domain (CDN/host gratis)
+- TLS SNI → real domain milikmu
+- **1 file diubah, +28 baris** di Xray-core
+- Kit ini: patch + script saja — bukan fork penuh Xray
 
 | | |
 |---|---|
 | **Developer** | **JhopanStore** |
-| **Repo** | https://github.com/jhopan/jhopanstore-onering |
+| **Repo** | https://github.com/jhopan/xray-onering |
+| **Engine base** | [XTLS/Xray-core](https://github.com/XTLS/Xray-core) |
+| **Credit metode** | [dharak36/xray-onering](https://github.com/dharak36/xray-onering) |
 | **Default base** | Xray-core `v26.6.22` (bisa diganti) |
-| **License (kit ini)** | MIT |
+| **License kit** | MIT |
 
 ---
 
-## Isi repo (bersih)
+## Download binary (prebuilt)
+
+> **https://github.com/jhopan/xray-onering/releases**
+
+| File | Platform | Cocok untuk |
+|---|---|---|
+| `xray.linux.arm64.onering` | Linux ARM64 | OpenWrt / STB / Pi / VPS ARM |
+| `xray.linux.amd64.onering` | Linux x64 | VPS / server / desktop Linux |
+| `xray.linux.armv7.onering` | Linux ARMv7 | OpenWrt 32-bit / router lama |
+| `xray.windows.amd64.onering.exe` | Windows x64 | Desktop / laptop Windows |
+| `xray.windows.arm64.onering.exe` | Windows ARM64 | Surface Pro X / Snapdragon PC |
+| `SHA256SUMS.txt` | — | verifikasi integritas |
+
+Verifikasi:
+```bash
+sha256sum -c SHA256SUMS.txt
+```
+
+---
+
+## Isi repo
 
 ```
-jhopanstore-onering/
-├── onering.patch   # patch OneRing (+28 baris)
-├── apply.sh        # pilih versi → clone → apply
-├── build.sh        # --ver → apply + build multi platform
-├── verify.sh       # cek patch / binary
-├── LICENSE         # MIT
+xray-onering/
+├── onering.patch   # patch OneRing (+28 baris, 1 file)
+├── apply.sh        # pilih versi → clone Xray → apply patch
+├── build.sh        # --ver → apply + build binary
+├── verify.sh       # cek patch / tree / binary
+├── LICENSE         # MIT © JhopanStore
 └── README.md
 ```
 
-Setelah build (lokal, gitignored):
-
-```
-Xray-core/   # tree Xray yang diunduh + dipatch
-dist/        # binary
-```
-
----
-
-## Release (prebuilt)
-
-Unduh binary siap pakai:
-
-**https://github.com/jhopan/jhopanstore-onering/releases**
-
-Tag contoh: `onering-v1.0-xray-v26.6.22`
-
-| Asset | Platform |
-|---|---|
-| `xray.linux.arm64.onering` | OpenWrt / STB / Pi |
-| `xray.linux.amd64.onering` | VPS / Linux |
-| `xray.windows.amd64.onering.exe` | Windows x64 |
-| `SHA256SUMS.txt` | checksum |
+Build mengunduh Xray-core dari repo resmi XTLS, patch, lalu compile.  
+`Xray-core/` dan `dist/` di-gitignore (tidak di-push).
 
 ---
 
 ## Syarat build dari source
 
-- Go 1.24+  
-- Git  
-- Internet  
-- Windows: Git Bash / WSL (jalankan `.sh`)
+| Syarat | Keterangan |
+|---|---|
+| Go 1.24+ | `go version` |
+| Git | clone Xray base |
+| Internet | saat pertama `apply.sh` |
+| Windows | pakai Git Bash / WSL untuk jalankan `.sh` |
 
 ---
 
-## Build (pilih versi → unduh → apply → binary)
+## Build
 
-### Satu perintah
+### Satu perintah (disarankan)
 
 ```bash
+# pilih versi → unduh Xray → apply OneRing → build
 bash build.sh --ver v26.6.22 linux-arm64
 bash build.sh -v 26.6.22 all
-bash build.sh --force --ver v26.7.1 windows-amd64
+bash build.sh --force --ver v26.7.1 all
 ```
 
 ### Dua langkah
 
 ```bash
+# 1. unduh + patch
 bash apply.sh v26.6.22
-bash build.sh linux-arm64
 
-bash apply.sh --list          # list tag Xray
-bash apply.sh --force v26.6.22
+# 2. build
+bash build.sh linux-arm64
 ```
 
-Tanpa argumen versi → default `v26.6.22`.
+### Semua platform sekaligus
 
-### Target
+```bash
+bash build.sh --ver v26.6.22 all
+# → dist/xray.linux.arm64.onering
+# → dist/xray.linux.amd64.onering
+# → dist/xray.windows.amd64.onering.exe
+```
 
-| Target | Hasil |
-|---|---|
-| `host` | OS sekarang |
-| `linux-arm64` | OpenWrt / STB / Pi |
-| `linux-amd64` | VPS / Linux |
-| `linux-arm` | OpenWrt 32-bit (GOARM=7) |
-| `windows-amd64` | Windows x64 |
-| `windows-arm64` | Windows ARM |
-| `all` | linux arm64 + amd64 + windows amd64 |
-| `custom goos goarch` | bebas |
+Target lain (manual):
+
+```bash
+bash build.sh linux-arm        # ARMv7 32-bit
+bash build.sh windows-arm64    # Windows ARM
+bash build.sh host             # OS sekarang
+bash build.sh custom darwin arm64   # macOS Apple Silicon
+```
+
+### Target lengkap
+
+| Target | GOOS | GOARCH | Catatan |
+|---|---|---|---|
+| `host` | (detect) | (detect) | OS sekarang |
+| `linux-arm64` | linux | arm64 | |
+| `linux-amd64` | linux | amd64 | |
+| `linux-arm` | linux | arm | GOARM=7 |
+| `windows-amd64` | windows | amd64 | |
+| `windows-arm64` | windows | arm64 | |
+| `all` | — | — | arm64+amd64 linux + win amd64 |
+| `custom goos goarch [extra]` | bebas | bebas | |
 
 Output: `dist/xray.<os>.<arch>.onering[.exe]`
+
+### Versi Xray
+
+```bash
+# lihat tag yang tersedia
+bash apply.sh --list
+
+# ganti versi
+bash build.sh --force --ver v26.7.1 all
+
+# default kalau tidak ada --ver: v26.6.22
+```
+
+### Verifikasi hasil
 
 ```bash
 bash verify.sh
 ./dist/xray.linux.amd64.onering version
+# → Xray 26.6.22 (Xray, Penetrates Everything.)
 ```
 
 ---
 
-## Config SNI
+## Cara OneRing bekerja
+
+```
+Config serverName: "onering:neva.jhopanstore.my.id:support.zoom.us"
+                              │real domain             │bug domain
+                              ↓                        ↓
+TCP connect  ─────────────────────────────────► bug domain IP (CDN)
+TLS SNI      ─────────────────────────────────► real domain
+WS Host      ─────────────────────────────────► real domain
+```
+
+ISP hanya melihat koneksi ke CDN publik (bug domain). Server menerima TLS dengan SNI real domain milikmu.
+
+---
+
+## Config Xray
 
 ```json
-"tlsSettings": {
-  "serverName": "onering:REAL_DOMAIN:BUG_DOMAIN",
-  "fingerprint": ""
+{
+  "outbounds": [{
+    "protocol": "vless",
+    "settings": {
+      "vnext": [{
+        "address": "support.zoom.us",
+        "port": 443,
+        "users": [{"id": "UUID-MU", "encryption": "none"}]
+      }]
+    },
+    "streamSettings": {
+      "network": "ws",
+      "security": "tls",
+      "tlsSettings": {
+        "serverName": "onering:neva.jhopanstore.my.id:support.zoom.us",
+        "fingerprint": ""
+      },
+      "wsSettings": {
+        "path": "/vless",
+        "headers": {"Host": "neva.jhopanstore.my.id"}
+      }
+    }
+  }]
 }
 ```
 
-| Layer | Value |
-|---|---|
-| TCP / `address` | bug domain |
-| TLS SNI | real domain (dari OneRing) |
-| WS Host | real domain (biasanya) |
+> Xray v26+: jangan `allowInsecure: true`. Pakai `fingerprint: ""`.
 
-Xray v26+: jangan `allowInsecure`.
+| Field | Value |
+|---|---|
+| `address` | bug domain (CDN) |
+| `serverName` | `onering:REAL:BUG` |
+| WS `Host` | real domain |
 
 ---
 
-## Deploy singkat
+## Deploy
+
+### VPS / server Linux
 
 ```bash
-# VPS
 scp dist/xray.linux.amd64.onering root@SERVER:/usr/local/bin/xray
+ssh root@SERVER 'chmod +x /usr/local/bin/xray && xray version'
+systemctl restart xray  # atau marzban / v2ray-agent
+```
 
-# OpenWrt
-scp dist/xray.linux.arm64.onering root@ROUTER:/tmp/xray
-# backup + ganti /usr/bin/xray + restart passwall
+### OpenWrt (arm64)
 
-# Windows
+```bash
+scp dist/xray.linux.arm64.onering root@192.168.1.1:/tmp/xray
+ssh root@192.168.1.1 '
+  cp /usr/bin/xray /usr/bin/xray.bak
+  mv /tmp/xray /usr/bin/xray
+  chmod +x /usr/bin/xray
+  xray version
+  /etc/init.d/passwall restart
+'
+```
+
+### OpenWrt (ARMv7 32-bit)
+
+```bash
+scp dist/xray.linux.armv7.onering root@ROUTER:/tmp/xray
+# sama seperti arm64 di atas
+```
+
+### Windows
+
+```bat
 dist\xray.windows.amd64.onering.exe run -c config.json
 ```
 
 ---
 
-## Patch gagal di Xray versi baru
+## Update base Xray ke versi baru
+
+```bash
+# lihat tag terbaru
+bash apply.sh --list
+
+# build dengan versi baru (re-clone otomatis)
+bash build.sh --force --ver vNEW all
+bash verify.sh
+```
+
+Kalau patch conflict (Xray ubah `parseServerName`):
 
 ```bash
 cd Xray-core
 git apply --reject ../onering.patch
-# edit manual ParseOneRing + parseServerName di transport/internet/tls/config.go
-git add transport/internet/tls/config.go && git commit -m "OneRing"
+# edit manual ParseOneRing + parseServerName
+# lihat: transport/internet/tls/config.go
+git add transport/internet/tls/config.go
+git commit -m "OneRing"
 git format-patch -1 HEAD --stdout > ../onering.patch
-cd .. && bash build.sh all
+cd ..
+bash build.sh all
 ```
 
 ---
 
-## Credits / Source
+## Kembangkan lebih lanjut
+
+Repo ini dirancang agar mudah dikembangkan:
+
+| Mau tambah | Cara |
+|---|---|
+| Platform baru (macOS, FreeBSD) | `bash build.sh custom darwin arm64` |
+| Versi Xray baru | `bash build.sh --force --ver vX.Y.Z all` |
+| Fitur Xray tambahan | fork `Xray-core`, tambah patch, update `onering.patch` |
+| AAR Android | pakai `libxray-mobile` + gomobile (repo terpisah) |
+| CI auto-build | tambah `.github/workflows/build.yml` (lihat bawah) |
+
+### Contoh GitHub Actions (opsional)
+
+```yaml
+name: Build
+on:
+  push:
+    tags: ['*']
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - run: bash build.sh --ver v26.6.22 all
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+```
+
+---
+
+## Credits
 
 | | |
 |---|---|
-| **Pengembang kit ini** | **JhopanStore** |
-| **Metode / inspirasi OneRing** | [dharak36/xray-onering](https://github.com/dharak36/xray-onering) |
-| **Engine base** | [XTLS/Xray-core](https://github.com/XTLS/Xray-core) (MPL-2.0) |
+| **Developer kit** | **JhopanStore** |
+| **Metode OneRing** | [dharak36/xray-onering](https://github.com/dharak36/xray-onering) |
+| **Engine** | [XTLS/Xray-core](https://github.com/XTLS/Xray-core) (MPL-2.0) |
 
-Repo ini **bukan** salinan penuh Xray-core. Hanya patch + script build.  
-Binary hasil build tetap mengandung Xray-core (lisensi upstream MPL-2.0).  
-Kode kit (script, patch packaging, docs) dilisensikan **MIT** — lihat `LICENSE`.
+Kit ini (script, patch, docs) lisensi **MIT**.  
+Binary hasil build mengandung Xray-core (MPL-2.0 upstream).

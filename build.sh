@@ -96,8 +96,7 @@ build_one() {
     cd "$SRC"
     env CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" ${extra[@]+"${extra[@]}"} \
       go build -trimpath -ldflags="$LDFLAGS" -o "$ROOT/$DIST/$out" ./main
-  )
-  ls -lh "$DIST/$out"
+  ) && ls -lh "$ROOT/$DIST/$out" || { echo "[-] build failed: $out" >&2; return 1; }
 }
 
 do_target() {
